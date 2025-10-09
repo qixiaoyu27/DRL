@@ -1,0 +1,8 @@
+gymnasium>=0.29.0
+jsbsim>=1.1.12
+matplotlib>=3.8.0
+netCDF4>=1.6.5
+numpy>=1.24.0
+pyyaml>=6.0.0
+stable-baselines3>=2.3.0
+torch>=2.1.0
