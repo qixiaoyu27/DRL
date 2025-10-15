@@ -3,9 +3,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any, Dict
+
+if __package__ is None or __package__ == "":  # pragma: no cover - runtime safety for IDE execution
+    package_root = Path(__file__).resolve().parents[1]
+    package_root_str = str(package_root)
+    if package_root_str not in sys.path:
+        sys.path.insert(0, package_root_str)
+    __package__ = "rl_wind_uav"
 
 import gymnasium as gym
 from stable_baselines3 import PPO
@@ -17,12 +25,6 @@ from stable_baselines3.common.callbacks import (
 )
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-
-if __package__ is None or __package__ == "":  # pragma: no cover - runtime safety for IDE execution
-    import sys
-
-    package_root = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(package_root))
 
 from rl_wind_uav.callbacks import ConsoleLogCallback
 from rl_wind_uav.env.fixed_wing_route_env import FixedWingRouteEnv, RouteConfig
