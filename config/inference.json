@@ -1,0 +1,8 @@
+{
+  "jsbsim_root": "/path/to/JSBSim",
+  "model": "runs/ppo/ppo_wind_route.zip",
+  "episodes": 3,
+  "seed": 0,
+  "flightgear": false,
+  "flightgear_path": ""
+}

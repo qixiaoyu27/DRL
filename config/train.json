@@ -1,0 +1,8 @@
+{
+  "jsbsim_root": "/path/to/JSBSim",
+  "logdir": "runs/ppo",
+  "total_steps": 2000000,
+  "eval_freq": 50000,
+  "seed": 42,
+  "num_envs": 1
+}
