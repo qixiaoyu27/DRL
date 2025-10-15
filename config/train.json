@@ -1,0 +1,55 @@
+{
+  "jsbsim_root": "/path/to/JSBSim",
+  "logdir": "runs/ppo",
+  "seed": 42,
+  "device": "auto",
+  "total_steps": 2000000,
+  "eval_freq": 50000,
+  "num_envs": 1,
+  "progress_bar": true,
+  "console_log": {
+    "interval_steps": 10000
+  },
+  "checkpoint": {
+    "freq": 100000,
+    "prefix": "ppo_wind_route"
+  },
+  "env": {
+    "aircraft": "c310",
+    "init_lat": 37.628559,
+    "init_lon": -122.393561,
+    "init_altitude_m": 600.0,
+    "goal_lat": 37.648559,
+    "goal_lon": -122.363561,
+    "goal_threshold_m": 150.0,
+    "integration_dt": 0.1,
+    "action_hold_time": 0.5,
+    "episode_time_s": 600.0,
+    "max_bank_deg": 25.0,
+    "max_pitch_deg": 10.0,
+    "wind": {
+      "seed": 0,
+      "grid_size": 32,
+      "scale": 0.1,
+      "max_speed": 20.0,
+      "altitude_layers": 3,
+      "altitude_range": [
+        0.0,
+        3000.0
+      ]
+    }
+  },
+  "ppo": {
+    "policy": "MlpPolicy",
+    "learning_rate": 0.0003,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5
+  }
+}
