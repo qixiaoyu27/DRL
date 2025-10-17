@@ -1,10 +1,12 @@
 """Gymnasium environment for routing a fixed-wing UAV in a wind field."""
 from __future__ import annotations
 
+import io
 import math
 import os
 import subprocess
 import time
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -42,6 +44,7 @@ class RouteConfig:
     flightgear_path: Optional[str] = None
     flightgear_port: int = 5502
     run_fg_headless: bool = True
+    suppress_jsbsim_output: bool = True
     wind_config: WindFieldConfig = field(default_factory=WindFieldConfig)
     max_bank_deg: float = 25.0
     max_pitch_deg: float = 10.0
@@ -97,10 +100,12 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         super().__init__()
         self.config = config
         self._wind_field = WindField(config.wind_config)
-        self._sim = jsbsim.FGFDMExec(config.jsbsim_root)
-        self._sim.load_model(config.aircraft)
-        self._sim.set_dt(config.integration_dt)
-        self._sim.disable_output()
+        with self._maybe_suppress_jsbsim_output():
+            self._sim = jsbsim.FGFDMExec(config.jsbsim_root)
+            self._sim.set_debug_level(0)
+            self._sim.load_model(config.aircraft)
+            self._sim.set_dt(config.integration_dt)
+            self._sim.disable_output()
         self._dt = config.integration_dt
         self._hold_steps = max(1, int(config.action_hold_time / self._dt))
         self._max_steps = int(config.episode_time_s / self._dt)
@@ -135,7 +140,8 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         self._prev_action[:] = 0.0
 
         self._setup_initial_conditions()
-        self._sim.run_ic()
+        with self._maybe_suppress_jsbsim_output():
+            self._sim.run_ic()
         observation = self._observe()
         info = {"wind": self._current_wind}
         return observation, info
@@ -226,8 +232,6 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         return obs
 
     def _goal_vector(self, lat: float, lon: float) -> np.ndarray:
-        lat0 = math.radians(self.config.init_lat)
-        lon0 = math.radians(self.config.init_lon)
         lat1 = math.radians(self.config.goal_lat)
         lon1 = math.radians(self.config.goal_lon)
         r_earth = 6371000.0
@@ -291,3 +295,12 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         raise FileNotFoundError(
             "Could not auto-detect FlightGear executable. Provide `flightgear_path` in RouteConfig."
         )
+
+    @contextmanager
+    def _maybe_suppress_jsbsim_output(self):
+        if not getattr(self.config, "suppress_jsbsim_output", False):
+            yield
+            return
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            yield

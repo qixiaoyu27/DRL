@@ -50,6 +50,7 @@ DRL/
 - `device`：Torch 设备字符串（如 `cpu`、`cuda`、`cuda:0`），也可设置为 `auto` 交由 PyTorch 自动判断。
 - `env`：环境参数集合，对应 `RouteConfig`；可以修改初始/目标经纬度、飞行时长、动作保持时间、姿态限制，或在推理时启用 FlightGear：
   - `enable_flightgear` / `flightgear_path` / `flightgear_port` / `run_fg_headless` 控制可视化。
+  - `suppress_jsbsim_output` 为 `true` 时会在训练/推理初始化阶段静默 JSBSim 的大量机型参数打印；若需要调试底层 FDM，可改为 `false` 以查看原始输出。
   - `wind` 子段映射到 `WindFieldConfig`，可配置风场随机种子、网格尺度、最大风速和高度层数。
 - `checkpoint`（训练）：设置 `freq`（保存步数间隔，0 表示关闭）与 `prefix`（保存文件名前缀）。
 - `console_log`（训练）：`interval_steps` 控制每隔多少环境步在 PyCharm/终端打印一条训练摘要，设为 0 可关闭。
@@ -131,6 +132,7 @@ python -m rl_wind_uav.inference \
 - **找不到 `fgfs`**：设置环境变量 `FLIGHTGEAR_EXE`、在命令行使用 `--flightgear-path`，或在 `config/inference.json` 中填写 `"env.flightgear_path"`。
 - **风场尺度调整**：通过 `WindFieldConfig(max_speed=..., scale=..., grid_size=...)` 控制风强与空间平滑度，训练前可结合真实风场数据进行初始化。
 - **策略震荡/无法收敛**：尝试增大 `goal_threshold_m`、调整奖励系数或缩短动作保持时间；也可引入 `VecNormalize`、学习率调节等稳定技巧。
+- **推理时仍看到 JSBSim 大量飞机参数输出**：确认 `config/inference.json`（或训练时的 `config/train.json`）中的 `env.suppress_jsbsim_output` 为 `true`。如需排查 JSBSim 配置，可暂时将其设为 `false` 以恢复详细输出。
 
 ## 许可
 

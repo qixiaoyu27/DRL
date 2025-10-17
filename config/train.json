@@ -25,6 +25,11 @@
     "integration_dt": 0.1,
     "action_hold_time": 0.5,
     "episode_time_s": 600.0,
+    "enable_flightgear": false,
+    "flightgear_path": "",
+    "flightgear_port": 5502,
+    "run_fg_headless": true,
+    "suppress_jsbsim_output": true,
     "max_bank_deg": 25.0,
     "max_pitch_deg": 10.0,
     "wind": {
