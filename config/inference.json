@@ -19,6 +19,7 @@
     "enable_flightgear": false,
     "flightgear_path": "",
     "flightgear_port": 5502,
+    "flightgear_stream_hz": 60,
     "run_fg_headless": true,
     "suppress_jsbsim_output": true,
     "max_bank_deg": 25.0,

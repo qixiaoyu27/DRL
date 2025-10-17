@@ -43,6 +43,7 @@ class RouteConfig:
     enable_flightgear: bool = False
     flightgear_path: Optional[str] = None
     flightgear_port: int = 5502
+    flightgear_stream_hz: int = 60
     run_fg_headless: bool = True
     suppress_jsbsim_output: bool = True
     wind_config: WindFieldConfig = field(default_factory=WindFieldConfig)
@@ -53,10 +54,11 @@ class RouteConfig:
 class FlightGearSession:
     """Helper to manage a FlightGear process for visualization."""
 
-    def __init__(self, exe_path: str, port: int, headless: bool = True) -> None:
+    def __init__(self, exe_path: str, port: int, headless: bool = True, stream_hz: int = 60) -> None:
         self.exe_path = exe_path
         self.port = port
         self.headless = headless
+        self.stream_hz = max(1, int(stream_hz))
         self._process: Optional[subprocess.Popen[str]] = None
 
     def start(self) -> None:
@@ -65,7 +67,7 @@ class FlightGearSession:
         args = [
             self.exe_path,
             "--aircraft=c310",
-            f"--generic=socket,in,60,,{self.port},udp",
+            f"--generic=socket,in,{self.stream_hz},,{self.port},udp",
             "--fdm=external",
         ]
         if self.headless:
@@ -112,8 +114,11 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         self._steps = 0
         self._prev_action = np.zeros(2, dtype=np.float32)
         self._fg_session: Optional[FlightGearSession] = None
+        self._fg_output_enabled = False
         self._origin_lat_rad = math.radians(self.config.init_lat)
         self._origin_lon_rad = math.radians(self.config.init_lon)
+
+        self._configure_flightgear_output()
 
         obs_high = np.array([
             math.pi,  # heading error
@@ -271,9 +276,15 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
     def render(self):  # pragma: no cover - requires external executable
         if not self.config.enable_flightgear:
             return None
+        self._configure_flightgear_output()
         if self._fg_session is None:
             exe = self.config.flightgear_path or self._detect_flightgear()
-            self._fg_session = FlightGearSession(exe, self.config.flightgear_port, self.config.run_fg_headless)
+            self._fg_session = FlightGearSession(
+                exe,
+                self.config.flightgear_port,
+                self.config.run_fg_headless,
+                self.config.flightgear_stream_hz,
+            )
             self._fg_session.start()
         return None
 
@@ -281,6 +292,8 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         if self._fg_session is not None:
             self._fg_session.close()
         self._sim = None  # type: ignore
+        self._fg_session = None
+        self._fg_output_enabled = False
 
     def _detect_flightgear(self) -> str:  # pragma: no cover - depends on platform
         candidates = [
@@ -304,3 +317,22 @@ class FixedWingRouteEnv(gym.Env[np.ndarray, np.ndarray]):
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
             yield
+
+    def _configure_flightgear_output(self) -> None:
+        if self._fg_output_enabled or not self.config.enable_flightgear:
+            return
+
+        rate = max(1, int(self.config.flightgear_stream_hz))
+        directive = f"""
+<output name="flightgear">
+  <type>FLIGHTGEAR</type>
+  <rate>{rate}</rate>
+  <protocol>udp</protocol>
+  <address>127.0.0.1</address>
+  <port>{self.config.flightgear_port}</port>
+</output>
+"""
+
+        with self._maybe_suppress_jsbsim_output():
+            self._sim.set_output_directive(directive)
+        self._fg_output_enabled = True

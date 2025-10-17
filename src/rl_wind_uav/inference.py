@@ -79,10 +79,15 @@ def main() -> None:
 
     env = FixedWingRouteEnv(route_config)
 
+    if route_config.enable_flightgear:
+        env.render()
+
     model = PPO.load(model_path, device=device)
 
     for ep in range(episodes):
         obs, info = env.reset(seed=seed + ep)
+        if route_config.enable_flightgear:
+            env.render()
         done = False
         truncated = False
         episode_reward = 0.0
@@ -90,6 +95,8 @@ def main() -> None:
         while not done and not truncated:
             action, _ = model.predict(obs, deterministic=bool(deterministic))
             obs, reward, done, truncated, info = env.step(action)
+            if route_config.enable_flightgear:
+                env.render()
             episode_reward += reward
             wind = info.get("wind", np.zeros(2))
             print(
