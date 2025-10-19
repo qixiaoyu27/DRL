@@ -133,6 +133,7 @@ python -m rl_wind_uav.inference \
 - **风场尺度调整**：通过 `WindFieldConfig(max_speed=..., scale=..., grid_size=...)` 控制风强与空间平滑度，训练前可结合真实风场数据进行初始化。
 - **策略震荡/无法收敛**：尝试增大 `goal_threshold_m`、调整奖励系数或缩短动作保持时间；也可引入 `VecNormalize`、学习率调节等稳定技巧。
 - **推理时仍看到 JSBSim 大量飞机参数输出**：确认 `config/inference.json`（或训练时的 `config/train.json`）中的 `env.suppress_jsbsim_output` 为 `true`。如需排查 JSBSim 配置，可暂时将其设为 `false` 以恢复详细输出。
+- **Windows 下在 PyCharm 运行时报 `numpy._core.multiarray` 无法导入**：某些 IDE 在启动 Conda 解释器时不会自动注入 `Library/bin` 到 `PATH`，导致 MKL/BLAS DLL 无法找到。训练与推理脚本现已自动补充该目录；若仍报错，请确认使用的是 Conda 虚拟环境，并在 `Run Configuration → Environment variables` 中设置 `CONDA_PREFIX`（或手动将 `<conda_env>\Library\bin` 加入 `PATH`）。
 
 ## 许可
 

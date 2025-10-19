@@ -13,6 +13,10 @@ package_root_str = str(package_root)
 if package_root_str not in sys.path:
     sys.path.insert(0, package_root_str)
 
+from rl_wind_uav.runtime import ensure_windows_dll_path
+
+ensure_windows_dll_path()
+
 import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import (
