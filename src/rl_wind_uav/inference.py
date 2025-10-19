@@ -5,12 +5,10 @@ import argparse
 import sys
 from pathlib import Path
 
-if __package__ is None or __package__ == "":  # pragma: no cover - runtime safety for IDE execution
-    package_root = Path(__file__).resolve().parents[1]
-    package_root_str = str(package_root)
-    if package_root_str not in sys.path:
-        sys.path.insert(0, package_root_str)
-    __package__ = "rl_wind_uav"
+package_root = Path(__file__).resolve().parents[1]  # pragma: no cover - runtime safety for IDE execution
+package_root_str = str(package_root)
+if package_root_str not in sys.path:
+    sys.path.insert(0, package_root_str)
 
 import numpy as np
 from stable_baselines3 import PPO
