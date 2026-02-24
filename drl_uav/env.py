@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -45,6 +48,82 @@ class FixedWingCoverageEnv(gym.Env):
         self.coverage = np.zeros((self.grid_size, self.grid_size), dtype=np.int8)
         self.step_count = 0
 
+    @staticmethod
+    def _candidate_root_dirs(jsbsim_module) -> list[Path]:
+        dirs: list[Path] = []
+
+        # 1) hardcoded config first
+        if config.JSBSIM_ROOT_DIR:
+            dirs.append(Path(config.JSBSIM_ROOT_DIR))
+
+        # 2) env var paths
+        for key in ["JSBSIM_ROOT", "JSBSIM_ROOT_DIR"]:
+            val = os.environ.get(key)
+            if val:
+                dirs.append(Path(val))
+
+        # 3) package-relative guesses (pip/conda installs)
+        pkg_dir = Path(jsbsim_module.__file__).resolve().parent
+        dirs.extend([pkg_dir, pkg_dir.parent, pkg_dir / "data"])
+
+        # 4) common Windows/Unix install locations
+        dirs.extend(
+            [
+                Path("./jsbsim"),
+                Path("./JSBSim"),
+                Path("C:/Program Files/JSBSim"),
+                Path("C:/Program Files (x86)/JSBSim"),
+                Path("/usr/share/jsbsim"),
+                Path("/usr/local/share/jsbsim"),
+            ]
+        )
+
+        uniq: list[Path] = []
+        for p in dirs:
+            rp = p.resolve() if p.exists() else p
+            if rp not in uniq:
+                uniq.append(rp)
+        return uniq
+
+    @staticmethod
+    def _contains_aircraft(root: Path) -> bool:
+        return (root / "aircraft").exists()
+
+    def _configure_jsbsim_paths(self, jsbsim_module) -> tuple[list[str], list[str]]:
+        configured: list[str] = []
+        searched: list[str] = []
+
+        roots = self._candidate_root_dirs(jsbsim_module)
+        for root in roots:
+            searched.append(str(root))
+            if self._contains_aircraft(root):
+                if hasattr(self.jsbsim, "set_root_dir"):
+                    self.jsbsim.set_root_dir(str(root))
+                    configured.append(f"root={root}")
+                if hasattr(self.jsbsim, "set_aircraft_path"):
+                    self.jsbsim.set_aircraft_path(str(root / "aircraft"))
+                    configured.append(f"aircraft={root / 'aircraft'}")
+                if hasattr(self.jsbsim, "set_engine_path") and (root / "engine").exists():
+                    self.jsbsim.set_engine_path(str(root / "engine"))
+                    configured.append(f"engine={root / 'engine'}")
+                if hasattr(self.jsbsim, "set_systems_path") and (root / "systems").exists():
+                    self.jsbsim.set_systems_path(str(root / "systems"))
+                    configured.append(f"systems={root / 'systems'}")
+                break
+
+        # Explicit path overrides (highest priority at end)
+        if config.JSBSIM_AIRCRAFT_DIR and hasattr(self.jsbsim, "set_aircraft_path"):
+            self.jsbsim.set_aircraft_path(config.JSBSIM_AIRCRAFT_DIR)
+            configured.append(f"aircraft={config.JSBSIM_AIRCRAFT_DIR}")
+        if config.JSBSIM_ENGINE_DIR and hasattr(self.jsbsim, "set_engine_path"):
+            self.jsbsim.set_engine_path(config.JSBSIM_ENGINE_DIR)
+            configured.append(f"engine={config.JSBSIM_ENGINE_DIR}")
+        if config.JSBSIM_SYSTEMS_DIR and hasattr(self.jsbsim, "set_systems_path"):
+            self.jsbsim.set_systems_path(config.JSBSIM_SYSTEMS_DIR)
+            configured.append(f"systems={config.JSBSIM_SYSTEMS_DIR}")
+
+        return configured, searched
+
     def _init_jsbsim(self):
         try:
             import jsbsim
@@ -53,8 +132,26 @@ class FixedWingCoverageEnv(gym.Env):
 
         self.jsbsim = jsbsim.FGFDMExec(None)
         self.jsbsim.set_dt(self.dt)
-        if not self.jsbsim.load_model("c172p"):
-            raise RuntimeError("JSBSim model 'c172p' not found.")
+        configured, searched = self._configure_jsbsim_paths(jsbsim)
+
+        loaded_model = None
+        for model in config.JSBSIM_MODEL_CANDIDATES:
+            if self.jsbsim.load_model(model):
+                loaded_model = model
+                break
+
+        if loaded_model is None:
+            msg = (
+                "JSBSim model loading failed. Tried models="
+                f"{config.JSBSIM_MODEL_CANDIDATES}. "
+                f"Configured paths={configured if configured else 'none'}. "
+                f"Searched root candidates={searched}. "
+                "Please set drl_uav/config.py JSBSIM_ROOT_DIR or JSBSIM_AIRCRAFT_DIR."
+            )
+            raise RuntimeError(msg)
+
+        self.jsbsim_model = loaded_model
+        print(f"[JSBSim] loaded model: {self.jsbsim_model}")
 
     def _apply_jsbsim_state(self, turn_cmd: float) -> None:
         psi = float(self.state[2])
@@ -119,7 +216,7 @@ class FixedWingCoverageEnv(gym.Env):
 
         self.jsbsim.run_ic()
         self._cover_cells()
-        return self._get_obs(), {"scenario_id": self.scenario_idx}
+        return self._get_obs(), {"scenario_id": self.scenario_idx, "jsbsim_model": self.jsbsim_model}
 
     def step(self, action):
         turn_cmd = float(np.clip(action[0], -1.0, 1.0))
@@ -154,5 +251,6 @@ class FixedWingCoverageEnv(gym.Env):
             "position": self.state[:2].copy(),
             "wind": wind.copy(),
             "scenario_id": self.scenario_idx,
+            "jsbsim_model": self.jsbsim_model,
         }
         return self._get_obs(), float(reward), terminated, truncated, info

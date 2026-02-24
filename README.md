@@ -4,7 +4,7 @@
 
 ## 已实现能力
 
-- 使用 **JSBSim** 驱动固定翼飞行仿真（默认机型 `c172p`）。
+- 使用 **JSBSim** 驱动固定翼飞行仿真（自动尝试 `c172p/c172x/f16`）。
 - 训练环境参数写死在代码中（`drl_uav/config.py`），可在 IDE 中直接运行，无需命令行传参。
 - 自动生成并保存 **100 个风场环境** 到 `outputs/scenarios_100.json`。
 - 训练期间实时保存奖励曲线图 `reward_curve.png`。
@@ -18,7 +18,7 @@
 │   ├── config.py             # 写死参数配置（IDE 直接运行）
 │   ├── scenario_manager.py   # 生成/加载100个风场环境(JSON)
 │   ├── wind_field.py         # 背景风 + Rankine涡旋
-│   ├── env.py                # JSBSim + 覆盖任务环境
+│   ├── env.py                # JSBSim + 覆盖任务环境（自动路径发现）
 │   ├── models.py             # Attention+Residual + Recurrent policy
 │   └── evaluate.py           # 评估与轨迹绘图
 ├── train.py                  # 训练入口（无CLI参数）
@@ -31,6 +31,16 @@
 pip install -r requirements.txt
 python train.py
 ```
+
+## JSBSim 模型路径问题（重点）
+
+如果出现 `Could not open file: aircraft/c172p/c172p.xml`：
+
+1. 在 `drl_uav/config.py` 中设置：
+   - `JSBSIM_ROOT_DIR`（推荐，指向包含 `aircraft/engine/systems` 的根目录），或
+   - `JSBSIM_AIRCRAFT_DIR`（直接指向 `aircraft` 目录）。
+2. 代码会自动尝试多个根目录候选和模型候选（`c172p/c172x/f16`）。
+3. 失败时会输出已搜索路径，便于你在 Windows 下快速定位并填写。
 
 ## 输出
 

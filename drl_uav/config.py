@@ -19,3 +19,13 @@ CHECKPOINT_STEPS = 10_000
 LOG_DIR = Path("outputs")
 SCENARIO_JSON = Path("outputs/scenarios_100.json")
 SCENARIO_COUNT = 100
+
+# JSBSim settings (hardcoded, editable in IDE).
+# If None, code auto-discovers from package path and common locations.
+JSBSIM_ROOT_DIR: str | None = None
+JSBSIM_AIRCRAFT_DIR: str | None = None
+JSBSIM_ENGINE_DIR: str | None = None
+JSBSIM_SYSTEMS_DIR: str | None = None
+
+# Preferred model and fallbacks; code will try these in order.
+JSBSIM_MODEL_CANDIDATES = ["c172p", "c172x", "f16"]
