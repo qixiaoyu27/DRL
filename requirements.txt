@@ -1,0 +1,8 @@
+gymnasium>=0.29.1
+numpy>=1.24
+matplotlib>=3.7
+stable-baselines3>=2.3.0
+sb3-contrib>=2.3.0
+torch>=2.1
+tqdm>=4.66
+jsbsim>=1.2.0
